@@ -79,11 +79,22 @@ const generationConfig = {
 
 let conversationHistory = [];
 
-async function generateResponse(input, tone) {
+async function generateResponse(input, tone, imageBase64) {
     try {
+        const messageParts = [{ text: `${input}\ntone: ${tone}\n\n` }];
+
+        if (imageBase64) {
+            messageParts.push({
+                inlineData: {
+                    mimeType: "image/jpeg",
+                    data: imageBase64,
+                },
+            });
+        }
+
         conversationHistory.push({
             role: "user",
-            parts: [{ text: `${input}\ntone: ${tone}\n\n` }],
+            parts: messageParts,
         });
 
         const chatSession = model.startChat({
@@ -91,7 +102,7 @@ async function generateResponse(input, tone) {
             history: conversationHistory,
         });
 
-        const result = await chatSession.sendMessage(input);
+        const result = await chatSession.sendMessage(messageParts);
 
         conversationHistory.push({
             role: "model",
