@@ -87,8 +87,8 @@ let conversationHistory = [];
 async function processAndUploadImage(imageBuffer, mimeType) {
     try {
         const compressedImageBuffer = await sharp(imageBuffer)
-            .resize({ width: 800 }) // Resize image
-            .jpeg({ quality: 75 }) // Compress with 75% quality
+            .resize({ width: 800 })
+            .jpeg({ quality: 75 })
             .toBuffer();
 
         const tempFilePath = "temp_image_upload.jpeg";
@@ -99,7 +99,6 @@ async function processAndUploadImage(imageBuffer, mimeType) {
             displayName: "Uploaded Image",
         });
 
-        // Clean up local file after upload
         fs.unlinkSync(tempFilePath);
 
         console.log(
