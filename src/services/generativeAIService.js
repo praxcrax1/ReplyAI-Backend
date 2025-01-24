@@ -1,9 +1,12 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 const sharp = require("sharp");
+const fs = require("fs");
+const { GoogleAIFileManager } = require("@google/generative-ai/server");
 
 const apiKey = process.env.API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
+const fileManager = new GoogleAIFileManager(apiKey);
 
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
@@ -80,11 +83,33 @@ const generationConfig = {
 
 let conversationHistory = [];
 
-async function compressImage(imageBuffer) {
-    return sharp(imageBuffer)
-        .resize({ width: 800 }) // Resize image to a smaller width.
-        .jpeg({ quality: 75 }) // Compress the image with 75% quality.
-        .toBuffer(); // Returns the processed image as a buffer.
+
+async function processAndUploadImage(imageBuffer, mimeType) {
+    try {
+        const compressedImageBuffer = await sharp(imageBuffer)
+            .resize({ width: 800 }) // Resize image
+            .jpeg({ quality: 75 }) // Compress with 75% quality
+            .toBuffer();
+
+        const tempFilePath = "temp_image_upload.jpeg";
+        fs.writeFileSync(tempFilePath, compressedImageBuffer);
+
+        const uploadResult = await fileManager.uploadFile(tempFilePath, {
+            mimeType,
+            displayName: "Uploaded Image",
+        });
+
+        // Clean up local file after upload
+        fs.unlinkSync(tempFilePath);
+
+        console.log(
+            `Uploaded file ${uploadResult.file.displayName} as: ${uploadResult.file.name}`
+        );
+        return uploadResult.file;
+    } catch (error) {
+        console.error("Error processing and uploading image:", error);
+        throw new Error("Failed to process and upload image.");
+    }
 }
 
 async function generateResponse(input, tone, imageBase64) {
@@ -92,12 +117,12 @@ async function generateResponse(input, tone, imageBase64) {
         const messageParts = [{ text: `${input}\ntone: ${tone}\n\n` }];
 
         if (imageBase64) {
-            const compressedImage = await compressImage(Buffer.from(imageBase64, "base64"));
-            const compressedBase64 = compressedImage.toString("base64");
+            const imageBuffer = Buffer.from(imageBase64, "base64");
+            const uploadedFile = await processAndUploadImage(imageBuffer, "image/jpeg");
             messageParts.push({
-                inlineData: {
+                fileData: {
                     mimeType: "image/jpeg",
-                    data: compressedBase64,
+                    fileUri: uploadedFile.uri,
                 },
             });
         }
