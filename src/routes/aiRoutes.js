@@ -4,11 +4,12 @@ const {
     clearConversationHistory,
     getConversationHistory,
 } = require("../services/generativeAIService");
+const verifyToken = require("../middlewares/verifyToken");
 
 const router = express.Router();
 
-router.post("/generate", async (req, res) => {
-    const { input, tone, imageBase64 } = req.body;
+router.post("/generate", verifyToken, async (req, res) => {
+    const { input = "Give me a reply", tone = "", imageBase64 } = req.body;
 
     if (!input || !tone) {
         return res.status(400).json({ error: "Input and tone are required." });
@@ -22,12 +23,12 @@ router.post("/generate", async (req, res) => {
     }
 });
 
-router.post("/clear-history", (req, res) => {
+router.post("/clear-history", verifyToken, (req, res) => {
     clearConversationHistory();
     res.status(200).json({ message: "Conversation history cleared." });
 });
 
-router.get("/history", (req, res) => {
+router.get("/history", verifyToken, (req, res) => {
     const history = getConversationHistory();
     res.status(200).json({ history });
 });
