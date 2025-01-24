@@ -1,5 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
+const sharp = require("sharp");
 
 const apiKey = process.env.API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -79,15 +80,24 @@ const generationConfig = {
 
 let conversationHistory = [];
 
+async function compressImage(imageBuffer) {
+    return sharp(imageBuffer)
+        .resize({ width: 800 }) // Resize image to a smaller width.
+        .jpeg({ quality: 75 }) // Compress the image with 75% quality.
+        .toBuffer(); // Returns the processed image as a buffer.
+}
+
 async function generateResponse(input, tone, imageBase64) {
     try {
         const messageParts = [{ text: `${input}\ntone: ${tone}\n\n` }];
 
         if (imageBase64) {
+            const compressedImage = await compressImage(Buffer.from(imageBase64, "base64"));
+            const compressedBase64 = compressedImage.toString("base64");
             messageParts.push({
                 inlineData: {
                     mimeType: "image/jpeg",
-                    data: imageBase64,
+                    data: compressedBase64,
                 },
             });
         }
